@@ -1,20 +1,32 @@
 import pymem
 import pymem.process
+import re
 
-PROCESS_NAME = "EscapeFromTarkov.exe"
 ENEMY_COLOR = (255, 0, 0)
 ENEMY_HEALTH_COLOR = (255, 255, 255)
 FONT = "Arial"
 FONT_SIZE = 16
 
+def prompt_value(prompt_text, default_value=None, regex=None):
+    while True:
+        value = input(f"{prompt_text} [{default_value}]: ") or default_value
+        if regex and not re.match(regex, value):
+            print("Invalid input, please try again.")
+        else:
+            return value
+
+def prompt_hex(prompt_text, default_value=None):
+    return prompt_value(prompt_text, default_value, regex=r"^[0-9a-fA-F]+$")
+
+process_name = prompt_value("Process name")
+player_base = int(prompt_hex("Player base address"), 16)
+health_offset = int(prompt_hex("Health offset"), 16)
+name_offset = int(prompt_hex("Name offset"), 16)
+
 while True:
     try:
-        pm = pymem.Pymem(PROCESS_NAME)
-        base_address = pymem.process.module_from_name(pm.process_handle, PROCESS_NAME).lpBaseOfDll
-
-        player_base = base_address + 0x123456 #replace this with the player base address
-        health_offset = 0x12 #replace this with the health offset
-        name_offset = 0x34 #replace this with the name offset
+        pm = pymem.Pymem(process_name)
+        base_address = pymem.process.module_from_name(pm.process_handle, process_name).lpBaseOfDll
 
         player_list = []
         for i in range(10): #change this to the number of players you want to display
@@ -38,5 +50,7 @@ while True:
                 pm.draw_text(screen_position.x, screen_position.y - 40, f"Health: {health}%", FONT, FONT_SIZE, ENEMY_HEALTH_COLOR)
 
     except pymem.exception.ProcessNotFound:
-        pass
-        
+        print(f"Process {process_name} not found. Please start the game and try again.")
+        process_name = prompt_value("Process name")
+    except Exception as e:
+        print(f"An error occurred: {e}")
